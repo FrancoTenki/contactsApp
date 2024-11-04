@@ -9,6 +9,7 @@ import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 public interface ContactService {
 
@@ -20,4 +21,7 @@ public interface ContactService {
 
     @POST("/contacts")
     Call<Contact> create(@Body Contact contact);
+
+    @GET("/contacts")
+    Call<List<Contact>> getcontactsp(@Query("limit") int limit,@Query("page")int page);
 }

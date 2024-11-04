@@ -1,5 +1,6 @@
 package com.upn.contactsapp;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -35,6 +36,11 @@ public class MainActivity extends AppCompatActivity {
     List<Contact> elementos = new ArrayList<>();
     ContactAdaptar adaptar;
 
+    int currentpage=1;
+    int mul=1;
+    private static  final int Pagesize=10;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+
         AppDatabase db = AppDatabase.getInstance(this);
         ContactDAO contactDAO = db.contactDAO();
 
@@ -59,41 +66,27 @@ public class MainActivity extends AppCompatActivity {
         List<Contact> contacts = contactDAO.getAll();
         elementos.addAll(contacts);
 
+        RecyclerView recicleview=findViewById(R.id.rvContacts);
+        recicleview.setAdapter(adaptar);
+        recicleview.setLayoutManager(new LinearLayoutManager(this));
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://66d5b903f5859a7042673752.mockapi.io")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+        load();
 
-        ContactService service = retrofit.create(ContactService.class);
-
-        service.getAll().enqueue(new Callback< List<Contact> >() {
+        recicleview.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onResponse(Call<List<Contact>> call, Response< List<Contact> > response) {
-                //if (response.code() == 200)
-                Log.i("MAIN_APP", String.valueOf(response.code()));
-                if (response.isSuccessful()){
-                    //elementos = response.body();
-                    elementos.clear();
-                    elementos.addAll(response.body());
-                    adaptar.notifyDataSetChanged();
-
-                    for(Contact contact: response.body()) {
-                        Contact localContact = contactDAO.findRemote(contact.id);
-                        if (localContact == null) {
-                            contactDAO.insert(contact);
-                        }
-                    }
-
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (!recyclerView.canScrollVertically(1)){
+                    mul++;
+                    load();
                 }
-                // aca puedo trabajar con el resultado
-            }
-
-            @Override
-            public void onFailure(Call<List<Contact>> call, Throwable throwable) {
-                Log.e("MAIN_APP", throwable.getMessage());
             }
         });
+
+
+
+
+
 
         setUpRecyclerView();
 
@@ -105,34 +98,71 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("MAIN_APP", new Gson().toJson(contacts));
 
-        for (Contact contact: contacts) {
-            if (contact.id != 0) continue;
-            service.create(contact).enqueue(new Callback<Contact>() {
-                @Override
-                public void onResponse(Call<Contact> call, Response<Contact> response) {
-                    Log.i("MAIN_APP", String.valueOf(response.code()));
-
-                    if (response.isSuccessful()) {
-
-                        Contact newContact = response.body();
-
-                        Intent intent = getIntent();
-                        intent.putExtra("CONTACT", new Gson().toJson(newContact));
-                        contactDAO.update(contact.localId, newContact.id);
-
-                    }
-
-                }
-
-                @Override
-                public void onFailure(Call<Contact> call, Throwable throwable) {
-                    Log.e("MAIN_APP", throwable.getMessage());
-                }
-            });
-        }
+//        for (Contact contact: contacts) {
+//            if (contact.id != 0) continue;
+//            service.create(contact).enqueue(new Callback<Contact>() {
+//                @Override
+//                public void onResponse(Call<Contact> call, Response<Contact> response) {
+//                    Log.i("MAIN_APP", String.valueOf(response.code()));
+//
+//                    if (response.isSuccessful()) {
+//
+//                        Contact newContact = response.body();
+//
+//                        Intent intent = getIntent();
+//                        intent.putExtra("CONTACT", new Gson().toJson(newContact));
+//                        contactDAO.update(contact.localId, newContact.id);
+//
+//                    }
+//
+//                }
+//
+//                @Override
+//                public void onFailure(Call<Contact> call, Throwable throwable) {
+//                    Log.e("MAIN_APP", throwable.getMessage());
+//                }
+//            });
+//        }
 
     }
 
+    private void load(){
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://66d5b903f5859a7042673752.mockapi.io")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ContactService service = retrofit.create(ContactService.class);
+
+        service.getcontactsp(mul*Pagesize,currentpage).enqueue(new Callback< List<Contact> >() {
+            @Override
+            public void onResponse(Call<List<Contact>> call, Response< List<Contact> > response) {
+                //if (response.code() == 200)
+                Log.i("MAIN_APP", String.valueOf(response.code()));
+                if (response.isSuccessful()){
+                    //elementos = response.body();
+                    elementos.clear();
+                    elementos.addAll(response.body());
+                    adaptar.notifyDataSetChanged();
+
+
+//                    for(Contact contact: response.body()) {
+//                        Contact localContact = contactDAO.findRemote(contact.id);
+//                        if (localContact == null) {
+//                            contactDAO.insert(contact);
+//                        }
+//                    }
+
+                }
+                // aca puedo trabajar con el resultado
+            }
+
+            @Override
+            public void onFailure(Call<List<Contact>> call, Throwable throwable) {
+                Log.e("MAIN_APP", throwable.getMessage());
+            }
+        });
+    }
      @Override
      protected void onActivityResult(int requestCode, int resultCode, Intent data) {
          super.onActivityResult(requestCode, resultCode, data);
